@@ -1,14 +1,11 @@
 import express from 'express';
 import cors from 'cors';
-import cookieParser from 'cookie-parser';
+import v1api from './routers/v1api';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cookieParser());
-
 const whitelist = ['http://localhost:4200', 'https://localhost:4200'];
-
 const corsOptions = {
   origin: function (origin, callback) {
     if (whitelist.indexOf(origin) !== -1) {
@@ -26,5 +23,6 @@ app.use(express.urlencoded({
   extended: true
 }));
 
+app.use('/', v1api);
 app.listen(port);
 console.log("server started on port");
