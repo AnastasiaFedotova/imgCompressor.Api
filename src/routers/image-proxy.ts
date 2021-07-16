@@ -17,11 +17,12 @@ imageProxyApi.get("/images/:imgname/params", async (req, res) => {
       if (err) throw new Error(err.message);
 
       let data: Buffer;
-      let img : Sharp;
-      if (width && !height) img = sharp(image, {failOnError: false}).resize({ width: +width });
-      else if (!width && height) img = sharp(image, {failOnError: false}).resize({ height: +height });
-      else if (!width && !height) img = sharp(image, {failOnError: false});
-      else img = sharp(image)
+      let resizedImg : Sharp;
+
+      if (width && !height) resizedImg = sharp(image, {failOnError: false}).resize({ width: +width });
+      else if (!width && height) resizedImg = sharp(image, {failOnError: false}).resize({ height: +height });
+      else if (!width && !height) resizedImg = sharp(image, {failOnError: false});
+      else resizedImg = sharp(image, {failOnError: false})
         .resize({
           width: +width,
           height: +height,
@@ -29,12 +30,12 @@ imageProxyApi.get("/images/:imgname/params", async (req, res) => {
         });
 
       if (format) {
-        if (format === 'avif') data = await img.avif({}).toBuffer()
-        if (format === 'webp') data = await img.webp({}).toBuffer();
+        if (format === 'avif') data = await resizedImg.avif({}).toBuffer()
+        if (format === 'webp') data = await resizedImg.webp({}).toBuffer();
 
         res.setHeader('content-type', `image/${format}`);
       } else {
-        data =  await img.toBuffer();
+        data =  await resizedImg.toBuffer();
         res.setHeader('content-type', `${mime.lookup(`./dist/uploads/${imgname}`)}`);
       }
 
