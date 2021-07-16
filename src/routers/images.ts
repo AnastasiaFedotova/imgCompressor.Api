@@ -1,5 +1,6 @@
 import { Router } from "express";
 import fs from 'fs';
+import mime from "mime";
 import identifyFormat from "../utils/identifyFormat";
 import upload from './../storage/storagesetting';
 
@@ -20,18 +21,13 @@ imagesApi.get("/:imgname", upload, (req , res) => {
       res.json('not found');
     } else {
       res.statusCode = 200;
-      res.setHeader('content-type', `image/${identifyFormat(ua)}`);
+
+      if (identifyFormat(ua)) res.setHeader('content-type', `image/${identifyFormat(ua)}`);
+      else res.setHeader('content-type', mime.lookup(`./dist/uploads/${imgname}`));
+
       res.end(image);
     }
   });
-   /*const readableStream = fs.createReadStream(`./dist/uploads/${imgname}`);
-  res.setHeader("Content-Type", "image/jpeg");
-  readableStream.on("data", function(){
-    readableStream.pipe(res);
-  });
-
-
-  res.end();*/
 });
 
 export default imagesApi;
