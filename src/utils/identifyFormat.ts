@@ -15,8 +15,7 @@ export default function (userAgent: string):string {
     format = browserVersion > 64 ? 'webp' : null;
   } else if (browserName === 'Edge') {
     format = browserVersion > 17 ? 'webp' : null;
-  } else if (browserName !== 'Safari' && browserName !== 'IE') format = 'webp';
-  else format = null;
+  } else format = null;
 
   return format;
 }
