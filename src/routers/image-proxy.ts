@@ -1,45 +1,55 @@
 import { Router } from "express";
 import fs from "fs";
-import sharp, { Sharp } from "sharp";
-import mime from 'mime-types';
+import mime from "mime-types";
+import cacheImg from "../utils/cacheImages";
 import identifyFormat from "../utils/identifyFormat";
+import resizePicture from "./../utils/resizePicture";
 
 const imageProxyApi = Router();
 
 imageProxyApi.get("/images/:imgname/params", async (req, res) => {
   const ua = req.headers['user-agent'];
   const { width = 0, height = 0, format = identifyFormat(ua) } = req.query;
-  const imgname = req.params.imgname;
+  const imgFullName = req.params.imgname;
+  const imgName = imgFullName.split('.')[0];
 
-  console.log(mime.lookup(`./dist/uploads/${imgname}`))
   try {
-    fs.readFile(`./dist/uploads/${imgname}`, async (err, image) => {
+    fs.readFile(`./dist/uploads/${imgFullName}`, async (err, image) => {
       if (err) throw new Error(err.message);
-
       let data: Buffer;
-      let resizedImg : Sharp;
+      let isSavedPicture = false;
 
-      if (width && !height) resizedImg = sharp(image, {failOnError: false}).resize({ width: +width });
-      else if (!width && height) resizedImg = sharp(image, {failOnError: false}).resize({ height: +height });
-      else if (!width && !height) resizedImg = sharp(image, {failOnError: false});
-      else resizedImg = sharp(image, {failOnError: false})
-        .resize({
-          width: +width,
-          height: +height,
-          fit: sharp.fit.cover
-        });
+      fs.readdirSync('dist/imgstorage').forEach(file => {
+        if (file === `${imgName}.${format}`) {
+          isSavedPicture = true;
+        }
+      });
 
-      if (format) {
-        if (format === 'avif') data = await resizedImg.avif({}).toBuffer()
-        if (format === 'webp') data = await resizedImg.webp({}).toBuffer();
+      if (!isSavedPicture) {
+        const resizedImg = resizePicture(image, +width, +height);
 
-        res.setHeader('content-type', `image/${format}`);
+        if (format) {
+          if (format === 'avif') data = await resizedImg.avif({}).toBuffer();
+          if (format === 'webp') data = await resizedImg.webp({}).toBuffer();
+
+          res.setHeader('content-type', `image/${format}`);
+        } else {
+          data =  await resizedImg.toBuffer();
+          res.setHeader('content-type', `${mime.lookup(`./dist/uploads/${imgFullName}`)}`);
+        }
+
+        cacheImg(`${imgName}.${format}`, data);
+
+        res.end(data);
       } else {
-        data =  await resizedImg.toBuffer();
-        res.setHeader('content-type', `${mime.lookup(`./dist/uploads/${imgname}`)}`);
-      }
+        fs.readFile(`./dist/imgstorage/${imgName + '.' + format}`, (err, img) => {
+          if (err) throw new Error(err.message);
 
-      res.end(data);
+          console.log('saved picture');
+          res.setHeader('content-type', `${mime.lookup(`./dist/imgstorage/${imgName + '.' + format}`)}`);
+          res.end(img);
+        })
+      }
     });
   } catch(err) {
     res.statusCode = 404;
