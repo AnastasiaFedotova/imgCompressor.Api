@@ -13,7 +13,7 @@ imagesApi.post("/", upload, (req , res) => {
 
 imagesApi.get("/:imgname", upload, (req , res) => {
   const imgname = req.params.imgname;
-  const ua = req.headers['user-agent'];
+  const ua = req.useragent;
 
   fs.readFile(`./dist/uploads/${imgname}`, (err, image) => {
     if (err) {
