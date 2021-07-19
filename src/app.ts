@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import useragent from 'express-useragent';
 import v1api from './routers/v1api';
 
 const app = express();
@@ -22,6 +23,8 @@ app.use(express.json());
 app.use(express.urlencoded({
   extended: true
 }));
+
+app.use(useragent.express());
 
 app.use('/', v1api);
 app.listen(port);
