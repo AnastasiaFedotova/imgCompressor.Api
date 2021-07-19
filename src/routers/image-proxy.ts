@@ -8,7 +8,7 @@ import resizePicture from "./../utils/resizePicture";
 const imageProxyApi = Router();
 
 imageProxyApi.get("/images/:imgname/params", async (req, res) => {
-  const ua = req.headers['user-agent'];
+  const ua = req.useragent;
   const { width = 0, height = 0, format = identifyFormat(ua) } = req.query;
   const imgFullName = req.params.imgname;
   const imgName = imgFullName.split('.')[0];
