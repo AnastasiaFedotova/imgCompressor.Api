@@ -1,5 +1,6 @@
+import { Details } from "express-useragent";
 import formatsData from "./formatsData";
-export default function (userAgent):string {
+export default function (userAgent: Details):string {
   const browserName = userAgent.browser;
   const browserMajor = userAgent.version.split('.')[0];
   const browserMinor = userAgent.version.split('.')[1];
@@ -13,11 +14,11 @@ export default function (userAgent):string {
           return false;
         }
 
-        if (item.version.minor && !(item.version.minor >= browserMinor)) {
+        if (item.version.minor && !(+browserMinor >= item.version.minor)) {
           return false;
         }
 
-        if (browserMajor >= item.version.major) {
+        if (+browserMajor >= item.version.major) {
           format = elem.name;
           return true;
         }
