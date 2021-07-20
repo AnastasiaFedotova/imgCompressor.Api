@@ -1,37 +1,43 @@
 import fs from "fs";
+import util from "util";
 const klbInMb = 1024;
 
-function getFolderMbSize(path: string): number {
-  let size = 0;
-
-  const files = fs.readdirSync(path);
-  for (let i = 0; i < files.length; i++) {
-    size += fs.statSync(`${path}${files[i]}`).size;
-  }
-  return +(size / klbInMb / klbInMb).toFixed(2);
-}
-
 export default async (fileName: string, data: Buffer): Promise<void> => {
-  const limit = 0.12;
+  const stat = util.promisify(fs.stat);
+  const readFile = util.promisify(fs.readFile);
+  const limit = 0.7;
   const storagePath = "./dist/imgstorage/";
-  const sizeNewMg = +(Buffer.byteLength(data) / klbInMb / klbInMb).toFixed(2);
-  let sizeFoldersMb = +getFolderMbSize(storagePath);
 
-  fs.readdir(storagePath, (err, files) => {
-    if (err) throw err;
-    files.forEach(file => {
-      if (sizeFoldersMb + sizeNewMg > limit && file !== '.DS_Store') {
-        const sizeFile = fs.statSync(storagePath + file).size;
-        sizeFoldersMb -= +(sizeFile / klbInMb / klbInMb).toFixed(2);
+  const files = (await util.promisify(fs.readdir)(storagePath)).filter(file => file != '.DS_Store');
 
-        fs.unlink(storagePath + file,function(err){
-          if(err) return console.log(err);
-        });
-      }
-    });
+  const metaDataFilesPromises = files.map(async (file) => {
+    return {
+      path: storagePath + file,
+      viewsCount: JSON.parse((await readFile(storagePath + file)).toString()).view,
+      size: +((await stat(storagePath + file)).size / klbInMb / klbInMb).toFixed(2)
+    }
   })
 
-  fs.writeFile(storagePath + fileName, data, (err) => {
+  const metaDataFiles = await Promise.all(metaDataFilesPromises);
+
+  while (metaDataFiles.reduce((accumulator, currentValue) => accumulator + currentValue.size, 0) > limit) {
+    const minFileByView = metaDataFiles.reduce((accumulator, currentValue) => {
+      return currentValue.viewsCount > accumulator.viewsCount ? accumulator : currentValue
+    });
+
+    await util.promisify(fs.unlink)(minFileByView.path);
+
+    const removedFileIndex = metaDataFiles.findIndex(metadata => metadata.path === minFileByView.path);
+
+    metaDataFiles.splice(removedFileIndex, 1);
+  }
+
+  const dataToWrite = JSON.stringify({
+    view: 0,
+    data
+  })
+
+  fs.writeFile(storagePath + fileName + ".json", dataToWrite, (err) => {
     if (err) throw new Error(err.message);
   });
 }

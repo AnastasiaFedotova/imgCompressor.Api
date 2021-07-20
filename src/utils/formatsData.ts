@@ -1,6 +1,6 @@
 export default [
   {
-    name: "web",
+    name: "webp",
     data: [
     { browser: "Edge", version: { major: 18 } },
     { browser: "Firefox", version: { major: 65 } },

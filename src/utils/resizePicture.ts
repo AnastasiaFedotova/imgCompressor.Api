@@ -2,16 +2,17 @@ import sharp, { Sharp } from "sharp";
 
 export default function (image: Buffer, width: number, height: number): Sharp {
   let resizedImg: Sharp;
+  const sharpInstance = sharp(image, {failOnError: false});
 
   try {
     if (width && !height) {
-    resizedImg = sharp(image, {failOnError: false}).resize({ width: +width });
+    resizedImg = sharpInstance.resize({ width: +width });
     } else if (!width && height) {
-      resizedImg = sharp(image, {failOnError: false}).resize({ height: +height });
+      resizedImg = sharpInstance.resize({ height: +height });
     } else if (!width && !height) {
-      resizedImg = sharp(image, {failOnError: false});
+      resizedImg = sharpInstance;
     } else {
-      resizedImg = sharp(image, {failOnError: false})
+      resizedImg = sharpInstance
       .resize({
         width: +width,
         height: +height,
