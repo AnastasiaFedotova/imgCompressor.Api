@@ -1,10 +1,10 @@
 import { Router } from "express";
 import fs from "fs";
 import mime from "mime-types";
-import addMetadataViews from "../utils/addMetadataViews";
 import cacheImg from "../utils/cacheImages";
 import identifyFormat from "../utils/identifyFormat";
 import resizePicture from "./../utils/resizePicture";
+import addMetadataViews from "../utils/addMetadataViews";
 
 const imageProxyApi = Router();
 
@@ -23,7 +23,7 @@ imageProxyApi.get("/images/:imgname/params", async (req, res) => {
       let isSavedPicture = false;
 
       fs.readdirSync('dist/imgstorage').forEach(file => {
-        if (file === `${imgName}.json`) {
+        if (file === `${imgName}.${format}`) {
           isSavedPicture = true;
         }
       });
@@ -41,18 +41,18 @@ imageProxyApi.get("/images/:imgname/params", async (req, res) => {
           res.setHeader('content-type', `${mime.lookup(`./dist/uploads/${imgFullName}`)}`);
         }
 
-        cacheImg(imgName, data);
+        cacheImg(`${imgName}.${format}`, data);
+        addMetadataViews(`${imgName}.${format}`);
+
         res.end(data);
       } else {
-        fs.readFile(`${pathToSave}${imgName + '.json'}`, "utf8", (err, obj) => {
+        fs.readFile(`./dist/imgstorage/${imgName}.${format}`, (err, img) => {
           if (err) throw new Error(err.message);
 
-          const img = JSON.parse(obj.toString());
-          addMetadataViews(`${pathToSave}${imgName + '.json'}`, img);
+          addMetadataViews(`${imgName}.${format}`);
 
-          console.log('saved picture');
           res.setHeader('content-type', `${mime.lookup(pathToSave + nameNewImg)}`);
-          res.end(Buffer.from(img.data));
+          res.end(img);
         })
       }
     });
