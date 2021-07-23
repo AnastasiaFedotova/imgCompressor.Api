@@ -17,8 +17,8 @@ imagesApi.get("/:imgname", upload, (req , res) => {
 
   fs.readFile(`./dist/uploads/${imgname}`, (err, image) => {
     if (err) {
-      res.statusCode = 404;
-      res.json('not found');
+      console.log(err);
+      res.json('err');
     } else {
       res.statusCode = 200;
 

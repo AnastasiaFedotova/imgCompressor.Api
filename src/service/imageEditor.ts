@@ -2,9 +2,9 @@ import { Details } from "express-useragent";
 import fs from "fs";
 import mime from "mime-types";
 import util from "util";
-import cacheImg from "../utils/cacheImages";
+import sharp, { Sharp } from "sharp";
+import { CacheImages } from "./cacheImages";
 import identifyFormat from "../utils/identifyFormat";
-import resizePicture from "../utils/resizePicture";
 
 const readFile = util.promisify(fs.readFile);
 const readdir = util.promisify(fs.readdir);
@@ -14,9 +14,13 @@ export class ImageEditor {
   imgName: string;
   nameNewImg: string;
   data: Buffer;
+
   constructor(protected imgFullName: string, protected width: number,
     protected height: number, ua: Details, protected format: string) {
-    if (format === null) format = identifyFormat(ua);
+    if (this.format === null) {
+      this.format = identifyFormat(ua);
+    }
+
     this.imgName = imgFullName.split('.')[0];
     this.nameNewImg = this.imgName + '.' + format;
   }
@@ -39,7 +43,7 @@ export class ImageEditor {
       type: null
     }
     const image = await readFile(`./dist/uploads/${this.imgFullName}`);
-    const resizedImg = resizePicture(image, +this.width, +this.height);
+    const resizedImg = this.resizePicture(image, +this.width, +this.height);
 
     if (this.format) {
       if (this.format === 'avif') this.data = await resizedImg.avif({}).toBuffer();
@@ -52,7 +56,7 @@ export class ImageEditor {
       res.type = `${mime.lookup(`./dist/uploads/${this.imgFullName}`)}`;
     }
 
-    cacheImg(this.nameNewImg, this.data);
+    new CacheImages(this.nameNewImg, this.data).saveImages();
 
     res.value = this.data;
 
@@ -72,6 +76,33 @@ export class ImageEditor {
     } else {
       res = this.editImage();
     }
+
     return res;
+  }
+
+  resizePicture(image: Buffer, width: number, height: number): Sharp {
+    let resizedImg: Sharp;
+    const sharpInstance = sharp(image, {failOnError: false});
+
+    try {
+      if (width && !height) {
+        resizedImg = sharpInstance.resize({ width: +width });
+      } else if (!width && height) {
+        resizedImg = sharpInstance.resize({ height: +height });
+      } else if (!width && !height) {
+        resizedImg = sharpInstance;
+      } else {
+        resizedImg = sharpInstance
+        .resize({
+          width: +width,
+          height: +height,
+          fit: sharp.fit.cover
+        });
+      }
+    } catch (err) {
+      throw new Error(err.message)
+    }
+
+    return resizedImg;
   }
 }
