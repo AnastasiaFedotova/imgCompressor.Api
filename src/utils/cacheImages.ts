@@ -12,8 +12,8 @@ export default async (fileName: string, data: Buffer): Promise<void> => {
 
   const limit = 0.06;
   const storagePath = "./dist/imgstorage/";
-  let imagesSize = await get('globalImgsSize');
-  const files: string[] = await lrange('imgsList', 0, -1);
+  let imagesSize = await get('globalImagesSize');
+  const files: string[] = await lrange('imagesList', 0, -1);
 
   if (imagesSize > limit) {
     const metaDataFilesPromises = files.map(async (file) => {
@@ -36,8 +36,11 @@ export default async (fileName: string, data: Buffer): Promise<void> => {
 
       await util.promisify(fs.unlink)(minFileByView.path);
       client.del(minFileByView.name);
-      client.lrem('imgsList', 0, minFileByView.name);
-      set('globalImgsSize', String(await get('globalImgsSize') - minFileByView.size));
+      client.lrem('imagesList', 0, minFileByView.name);
+      set('globalImagesSize', String(await get('globalImagesSize') - minFileByView.size));
+
+      const remFileIndex = metaDataFiles.findIndex(e => e.name === minFileByView.name);
+      metaDataFiles.splice(remFileIndex, 1);
       imagesSize -= minFileByView.size;
     }
   }
