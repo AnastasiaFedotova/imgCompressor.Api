@@ -6,7 +6,7 @@ export default function (image: Buffer, width: number, height: number): Sharp {
 
   try {
     if (width && !height) {
-    resizedImg = sharpInstance.resize({ width: +width });
+      resizedImg = sharpInstance.resize({ width: +width });
     } else if (!width && height) {
       resizedImg = sharpInstance.resize({ height: +height });
     } else if (!width && !height) {

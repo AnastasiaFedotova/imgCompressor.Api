@@ -4,7 +4,6 @@ import mime from "mime-types";
 import cacheImg from "../utils/cacheImages";
 import identifyFormat from "../utils/identifyFormat";
 import resizePicture from "./../utils/resizePicture";
-import addMetadataViews from "../utils/addMetadataViews";
 
 const imageProxyApi = Router();
 
@@ -42,14 +41,11 @@ imageProxyApi.get("/images/:imgname/params", async (req, res) => {
         }
 
         cacheImg(`${imgName}.${format}`, data);
-        addMetadataViews(`${imgName}.${format}`);
 
         res.end(data);
       } else {
-        fs.readFile(`./dist/imgstorage/${imgName}.${format}`, (err, img) => {
+        fs.readFile(`./dist/imgstorage/${imgName}.${format}`, async (err, img) => {
           if (err) throw new Error(err.message);
-
-          addMetadataViews(`${imgName}.${format}`);
 
           res.setHeader('content-type', `${mime.lookup(pathToSave + nameNewImg)}`);
           res.end(img);

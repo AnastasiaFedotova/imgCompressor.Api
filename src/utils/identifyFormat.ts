@@ -1,5 +1,6 @@
 import { Details } from "express-useragent";
 import formatsData from "./formatsData";
+
 export default function (userAgent: Details):string {
   const browserName = userAgent.browser;
   const browserMajor = userAgent.version.split('.')[0];

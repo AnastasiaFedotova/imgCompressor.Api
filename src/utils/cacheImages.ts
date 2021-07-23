@@ -1,74 +1,49 @@
 import fs from "fs";
 import util from "util";
 import client from "../db/db";
+import { addFileMetadata } from "./addMetadata";
 const klbInMb = 1024;
 
-const removeByFullness = async (metaDataFiles) => {
-  const limit = 0.1;
-  console.log(metaDataFiles.reduce((accumulator, currentValue) => accumulator + currentValue.size, 0))
-  while (metaDataFiles.reduce((accumulator, currentValue) => accumulator + currentValue.size, 0) > limit) {
-    console.log(metaDataFiles);
-    const minFileByView = metaDataFiles.reduce((accumulator, currentValue) => {
-      return currentValue.viewsCount > accumulator.viewsCount ? accumulator : currentValue
-    });
+export default async (fileName: string, data: Buffer): Promise<void> => {
+  const hgetall = util.promisify(client.hgetall).bind(client);
+  const set = util.promisify(client.set).bind(client);
+  const lrange = util.promisify(client.lrange).bind(client);
+  const get = util.promisify(client.get).bind(client);
 
-    await util.promisify(fs.unlink)(minFileByView.path);
+  const limit = 0.06;
+  const storagePath = "./dist/imgstorage/";
+  let imagesSize = await get('globalImgsSize');
+  const files: string[] = await lrange('imgsList', 0, -1);
 
-    const removedFileIndex = metaDataFiles.findIndex(metadata => metadata.path === minFileByView.path);
+  if (imagesSize > limit) {
+    const metaDataFilesPromises = files.map(async (file) => {
+      const fileData = await hgetall(file);
 
-    metaDataFiles.splice(removedFileIndex, 1);
+      return {
+        path: storagePath + file,
+        name: file,
+        viewsCount: fileData.countViews,
+        size: fileData.size
+      }
+    })
+
+    const metaDataFiles = await Promise.all(metaDataFilesPromises);
+
+    while (imagesSize > limit) {
+      const minFileByView = metaDataFiles.reduce((accumulator, currentValue) => {
+        return currentValue.viewsCount > accumulator.viewsCount ? accumulator : currentValue
+      });
+
+      await util.promisify(fs.unlink)(minFileByView.path);
+      client.del(minFileByView.name);
+      client.lrem('imgsList', 0, minFileByView.name);
+      set('globalImgsSize', String(await get('globalImgsSize') - minFileByView.size));
+      imagesSize -= minFileByView.size;
+    }
   }
 
-  return metaDataFiles;
-}
-
-const saveFileDataToDb = async (data) => {
-  client.get('files', async (_err, dataFiles) => {
-    const metaDataFiles = JSON.parse(dataFiles);
-    metaDataFiles.push(data);
-    client.set('files', JSON.stringify(metaDataFiles));
-  })
-}
-
-
-export default async (fileName: string, data: Buffer): Promise<void> => {
-  const stat = util.promisify(fs.stat);
-  const hget = util.promisify(client.hget).bind(client);
-  const storagePath = "./dist/imgstorage/";
-
-  client.exists('files', async (err, reply) => {
-    if (err) throw err;
-
-    if (reply === 1) {
-      client.get('files', async (_err, dataFiles) => {
-        const metaDataFiles = JSON.parse(dataFiles);
-
-        client.set('files', JSON.stringify(await removeByFullness(metaDataFiles)));
-      })
-    } else {
-      const files = (await util.promisify(fs.readdir)(storagePath)).filter(file => file != '.DS_Store');
-
-      const metaDataFilesPromises = files.map(async (file) => {
-        return {
-          path: storagePath + file,
-          viewsCount: +(await hget(file, "countViews")),
-          size: +((await stat(storagePath + file)).size / klbInMb / klbInMb).toFixed(2)
-        }
-      })
-
-      const metaDataFiles = await Promise.all(metaDataFilesPromises);
-
-      client.set('files', JSON.stringify(await removeByFullness(metaDataFiles)));
-    }
-  });
-
   fs.writeFile(storagePath + fileName, data, async (err) => {
-    if (err) throw new Error(err.message);
-
-    saveFileDataToDb({
-      path: storagePath + fileName,
-      viewsCount: +(await hget(fileName, "countViews")),
-      size: +((await stat(storagePath + fileName)).size / klbInMb / klbInMb).toFixed(2)
-    });
+    if (err) throw err;
+    addFileMetadata(fileName, (data.length / klbInMb / klbInMb).toFixed(2));
   });
 }
