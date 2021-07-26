@@ -5,6 +5,7 @@ import util from "util";
 import sharp, { Sharp } from "sharp";
 import { CacheImages } from "./cacheImages";
 import identifyFormat from "../utils/identifyFormat";
+import { addFileMetadata } from "../utils/addMetadata";
 
 const readFile = util.promisify(fs.readFile);
 const readdir = util.promisify(fs.readdir);
@@ -70,6 +71,7 @@ export class ImageEditor {
 
     if (await this.isExistFile()) {
       const img = await readFile(`./dist/imgstorage/${this.fullEditImgName}`);
+      addFileMetadata(this.fullEditImgName);
 
       res = {
         type:`${mime.lookup(pathToSave + this.fullEditImgName)}`,
