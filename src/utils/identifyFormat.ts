@@ -3,8 +3,7 @@ import formatsData from "./formatsData";
 
 export default function (userAgent: Details):string {
   const browserName = userAgent.browser;
-  const browserMajor = userAgent.version.split('.')[0];
-  const browserMinor = userAgent.version.split('.')[1];
+  const [browserMajor, browserMinor] = userAgent.version.split('.');
 
   let format: string = null;
 

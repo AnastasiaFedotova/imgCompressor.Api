@@ -1,36 +1,31 @@
 import client from '../db/db';
+import util from 'util';
 
-const addFileMetadata = (keyName: string, size: string): void => {
-  client.hexists(keyName, 'countViews', (err, reply) => {
-    if (err) throw err;
+const get = util.promisify(client.get).bind(client);
+const set = util.promisify(client.set).bind(client);
+const exists = util.promisify(client.exists).bind(client);
+const zincrby = util.promisify(client.zincrby).bind(client);
+const zadd = util.promisify(client.zadd).bind(client);
+const zrank = util.promisify(client.zrank).bind(client);
 
-    if (reply === 1) {
-      client.hincrby(keyName, 'countViews', 1);
-    } else {
-      client.hmset(keyName, {
-        'countViews': '1',
-        'size': size
-      });
-    }
-  });
+const addFileMetadata = async (keyName: string, size: string): Promise<void> => {
+  if (await zrank('imagesList', keyName)) {
+    zincrby('imagesList', keyName, 1);
+  } else {
+    zadd('imagesList', 1, keyName);
+    set(keyName, size);
+  }
 
-  addGlobalMetadata(keyName, size);
+  addGlobalMetadata(size);
 }
 
-const addGlobalMetadata = (keyName: string, size: string): void => {
-  client.exists('globalImagesSize', (err, reply) => {
-    if (err) throw err;
-
-    if (reply === 1) {
-      client.get('globalImagesSize', (_err, val) => {
-        client.set('globalImagesSize', String(+val + +size));
-      });
-    } else {
-      client.set('globalImagesSize', size);
-    }
-  });
-
-  client.rpush('imagesList', keyName);
+const addGlobalMetadata = async (size: string): Promise<void> => {
+  if (await exists('globalImagesSize')) {
+    const globalImagesSize = await get('globalImagesSize');
+    set('globalImagesSize', String(+globalImagesSize + +size));
+  } else {
+    set('globalImagesSize', size);
+  }
 }
 
 export {

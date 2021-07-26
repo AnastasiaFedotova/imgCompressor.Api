@@ -12,7 +12,7 @@ const pathToSave = `./dist/imgstorage/`;
 
 export class ImageEditor {
   imgName: string;
-  nameNewImg: string;
+  fullEditImgName: string;
   data: Buffer;
 
   constructor(protected imgFullName: string, protected width: number,
@@ -22,14 +22,16 @@ export class ImageEditor {
     }
 
     this.imgName = imgFullName.split('.')[0];
-    this.nameNewImg = this.imgName + '.' + format;
+    this.fullEditImgName = this.imgName + '.' + this.format;
   }
 
   async isExistFile(): Promise<boolean> {
     let isSavedPicture = false;
 
-    (await readdir('dist/imgstorage')).forEach(file => {
-      if (file === this.nameNewImg) {
+    const cachedDirFiles = await readdir('dist/imgstorage');
+
+    cachedDirFiles.find(file => {
+      if (file === this.fullEditImgName) {
         isSavedPicture = true;
       }
     });
@@ -56,7 +58,7 @@ export class ImageEditor {
       res.type = `${mime.lookup(`./dist/uploads/${this.imgFullName}`)}`;
     }
 
-    new CacheImages(this.nameNewImg, this.data).saveImages();
+    new CacheImages(this.fullEditImgName, this.data).saveImages();
 
     res.value = this.data;
 
@@ -67,10 +69,10 @@ export class ImageEditor {
     let res = null;
 
     if (await this.isExistFile()) {
-      const img = await readFile(`./dist/imgstorage/${this.nameNewImg}`);
+      const img = await readFile(`./dist/imgstorage/${this.fullEditImgName}`);
 
       res = {
-        type:`${mime.lookup(pathToSave + this.nameNewImg)}`,
+        type:`${mime.lookup(pathToSave + this.fullEditImgName)}`,
         value: img
       }
     } else {
