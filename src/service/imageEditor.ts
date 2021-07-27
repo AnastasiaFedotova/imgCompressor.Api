@@ -27,17 +27,9 @@ export class ImageEditor {
   }
 
   async isExistFile(): Promise<boolean> {
-    let isSavedPicture = false;
-
     const cachedDirFiles = await readdir('dist/imgstorage');
 
-    cachedDirFiles.find(file => {
-      if (file === this.fullEditImgName) {
-        isSavedPicture = true;
-      }
-    });
-
-    return isSavedPicture ? true : false;
+    return !!cachedDirFiles.find(file => file === this.fullEditImgName);
   }
 
   async editImage(): Promise<{ value: Buffer; type: string; }>  {
@@ -68,8 +60,8 @@ export class ImageEditor {
 
   async getEditedImage(): Promise<{ value: Buffer; type: string; }> {
     let res = null;
-
-    if (await this.isExistFile()) {
+    const isSavedPicture = await this.isExistFile();
+    if (isSavedPicture) {
       const img = await readFile(`./dist/imgstorage/${this.fullEditImgName}`);
       addFileMetadata(this.fullEditImgName);
 
