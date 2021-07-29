@@ -37,9 +37,7 @@ export class CacheImages {
     const actualImages = await zrange('actualImagesList', 0, -1);
 
     for (let i = 0; await this.checkLimit(); i++) {
-      if (actualImages.includes(allImages[i])) {
-        break;
-      } else {
+      if (!actualImages.includes(allImages[i])) {
         this.removeImage(allImages[i]);
       }
     }

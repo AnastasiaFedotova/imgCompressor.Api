@@ -28,11 +28,13 @@ const addFileMetadata = async (keyName: string, size?: string): Promise<void> =>
       expire('actualImagesList', timeLifeInSec);
     }
 
-    await zadd('allImagesList', new Date().getTime(), keyName);
+    await zadd('allImagesList', 1, keyName);
     await zadd('actualImagesList', 1, keyName);
     set(`size_${keyName}`, size);
 
     addGlobalMetadata(size);
+  } else {
+    zincrby('allImagesList', 1, keyName);
   }
 }
 
