@@ -3,9 +3,9 @@ import util from "util";
 import client from "../db/db";
 import { addFileMetadata } from "../utils/addMetadata";
 const set = util.promisify(client.set).bind(client);
-const zrem = util.promisify(client.zrem).bind(client);
-const zrange = util.promisify(client.zrange).bind(client);
+const srem = util.promisify(client.srem).bind(client);
 const get = util.promisify(client.get).bind(client);
+const sort = util.promisify(client.sort).bind(client);
 const unlink = util.promisify(fs.unlink);
 
 const klbInMb = 1024;
@@ -28,13 +28,14 @@ export class CacheImages {
 
     await unlink(storagePath + name);
 
-    zrem('allImagesList', name);
+    srem('allImagesList', name);
     client.del(`size_${name}`);
+    client.del(`countViews_${name}`);
   }
 
   async removeUnpopularImages(): Promise<void> {
-    const allImages = await zrange('allImagesList', 0, -1);
-    const actualImages = await zrange('actualImagesList', 0, -1);
+    const allImages = await sort('allImagesList', 'BY', 'countViews_*');
+    const actualImages = await sort('actualImagesList', 'BY', 'countViews_*');
 
     for (let i = 0; i < allImages.length; i++) {
       if (!actualImages.includes(allImages[i])) {
@@ -47,7 +48,7 @@ export class CacheImages {
     }
 
     for (let i = 0; i < actualImages.length; i++) {
-      await zrem('actualImagesList', actualImages[i]);
+      await srem('actualImagesList', actualImages[i]);
       await this.removeImage(actualImages[i]);
 
       if (!await this.checkLimit()) {

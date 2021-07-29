@@ -5,36 +5,33 @@ const get = util.promisify(client.get).bind(client);
 const set = util.promisify(client.set).bind(client);
 const expire = util.promisify(client.expire).bind(client);
 const exists = util.promisify(client.exists).bind(client);
-const zincrby = util.promisify(client.zincrby).bind(client);
-const zadd = util.promisify(client.zadd).bind(client);
-const zrank = util.promisify(client.zrank).bind(client);
+//const zincrby = util.promisify(client.zincrby).bind(client);
+//const zadd = util.promisify(client.zadd).bind(client);
+const sadd = util.promisify(client.sadd).bind(client);
+const sismember = util.promisify(client.sismember).bind(client);
+const incr = util.promisify(client.incr).bind(client);
+//const zrank = util.promisify(client.zrank).bind(client);
 
 const timeLifeInSec = 60;//86400;
 
 const addFileMetadata = async (keyName: string, size?: string): Promise<void> => {
   const existsActualList = await exists('actualImagesList');
 
-  if (existsActualList) {
-    const actualImgData = await zrank('actualImagesList', keyName);
+  if (await sismember('allImagesList', keyName)) {
+    incr(`countViews_${keyName}`);
+  } else {
+    await sadd('allImagesList', keyName);
+    set(`countViews_${keyName}`, '1');
 
-    if (actualImgData !== null) {
-      zincrby('actualImagesList', 1, keyName);
-    }
-  }
-
-  if (await zrank('allImagesList', keyName) === null) {
-    if (!existsActualList) {
-      await zadd('actualImagesList', 1, keyName);
+    if (existsActualList) {
+      sadd('actualImagesList', keyName);
+    } else {
+      sadd('actualImagesList', keyName);
       expire('actualImagesList', timeLifeInSec);
     }
 
-    await zadd('allImagesList', 1, keyName);
-    await zadd('actualImagesList', 1, keyName);
     set(`size_${keyName}`, size);
-
     addGlobalMetadata(size);
-  } else {
-    zincrby('allImagesList', 1, keyName);
   }
 }
 
