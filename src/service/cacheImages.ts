@@ -46,9 +46,9 @@ export class CacheImages {
       }
     }
 
-    for (let i = 0; await this.checkLimit(); i++) {
-      await zrem('actualImagesList', allImages[i]);
-      await this.removeImage(allImages[i]);
+    for (let i = 0; i < actualImages.length; i++) {
+      await zrem('actualImagesList', actualImages[i]);
+      await this.removeImage(actualImages[i]);
 
       if (!await this.checkLimit()) {
         return;
