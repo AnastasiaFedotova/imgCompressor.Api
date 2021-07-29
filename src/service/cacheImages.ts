@@ -36,16 +36,22 @@ export class CacheImages {
     const allImages = await zrange('allImagesList', 0, -1);
     const actualImages = await zrange('actualImagesList', 0, -1);
 
-    for (let i = 0; await this.checkLimit(); i++) {
+    for (let i = 0; i < allImages.length; i++) {
       if (!actualImages.includes(allImages[i])) {
-        this.removeImage(allImages[i]);
+        await this.removeImage(allImages[i]);
+
+        if (!await this.checkLimit()) {
+          return;
+        }
       }
     }
 
-    if (await this.checkLimit()) {
-      for (let i = 0; await this.checkLimit(); i++) {
-        await zrem('actualImagesList', allImages[i]);
-        await this.removeImage(allImages[i]);
+    for (let i = 0; await this.checkLimit(); i++) {
+      await zrem('actualImagesList', allImages[i]);
+      await this.removeImage(allImages[i]);
+
+      if (!await this.checkLimit()) {
+        return;
       }
     }
   }
