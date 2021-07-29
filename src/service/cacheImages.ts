@@ -4,11 +4,8 @@ import client from "../db/db";
 import { addFileMetadata } from "../utils/addMetadata";
 const set = util.promisify(client.set).bind(client);
 const zrem = util.promisify(client.zrem).bind(client);
-const zrangebyscore = util.promisify(client.zrangebyscore).bind(client);
+const zrange = util.promisify(client.zrange).bind(client);
 const get = util.promisify(client.get).bind(client);
-const rpush = util.promisify(client.rpush).bind(client);
-const sort = util.promisify(client.sort).bind(client);
-//const hgetall = util.promisify(client.hgetall).bind(client);
 const unlink = util.promisify(fs.unlink);
 
 const klbInMb = 1024;
@@ -25,36 +22,41 @@ export class CacheImages {
     return imagesSize > this.memoryLimit ? true : false;
   }
 
+  async removeImage(name: string): Promise<void> {
+    const size = await get(`size_${name}`);
+    set('globalImagesSize', String(await get('globalImagesSize') - size));
+
+    await unlink(storagePath + name);
+
+    zrem('allImagesList', name);
+    client.del(`size_${name}`);
+  }
+
   async removeUnpopularImages(): Promise<void> {
-    const date = new Date().getTime();
-    //let limit = date - this.limitTimeInDays;
+    const allImages = await zrange('allImagesList', 0, -1);
+    const actualImages = await zrange('actualImagesList', 0, -1);
+
+    for (let i = 0; await this.checkLimit(); i++) {
+      if (actualImages.includes(allImages[i])) {
+        break;
+      } else {
+        this.removeImage(allImages[i]);
+      }
+    }
+
     if (await this.checkLimit()) {
-      const minFileByDate = await zrangebyscore('imagesList', 0, date);
-      await rpush('sortedImagesListByDate', minFileByDate);
-
-      const minFilesByViews = await sort('sortedImagesListByDate', 'BY', 'countView_*');
-
-      for (let i = 0; i < minFilesByViews.length; i++) {
-        if (await this.checkLimit()) {
-          console.log(minFilesByViews[i]);
-          const size = await get(`size_${minFilesByViews[i]}`);
-          set('globalImagesSize', String(await get('globalImagesSize') - size));
-
-          await unlink(storagePath + minFilesByViews[i]);
-
-          zrem('imagesList', minFilesByViews[i]);
-          client.del(`size_${minFilesByViews[i]}`);
-          client.del(`countView_${minFilesByViews[i]}`);
-        } else {
-          client.del('sortedImagesListByDate');
-          break;
-        }
+      for (let i = 0; await this.checkLimit(); i++) {
+        await zrem('actualImagesList', allImages[i]);
+        await this.removeImage(allImages[i]);
       }
     }
   }
 
   async saveImages(): Promise<void> {
-    await this.removeUnpopularImages();
+    if (await this.checkLimit()) {
+      await this.removeUnpopularImages();
+    }
+
     fs.writeFile(storagePath + this.fileName, this.data, async (err) => {
       if (err) throw err;
       addFileMetadata(this.fileName, (this.data.length / klbInMb / klbInMb).toFixed(2));
